@@ -8,25 +8,24 @@ import {
     Animated,
     Dimensions,
     SafeAreaView,
-    Switch,
-    Modal,
-    ScrollView
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../themecontext';
-import Slider from '@react-native-community/slider';
 import { Audio } from 'expo-av';
 import Svg, { Circle } from 'react-native-svg';
-
+import PomodoroSettings from "@/app/pomodoro/pomodoro_settings";
+import PomodoroHeader from "@/app/pomodoro/pomodoro_header";
+import TimerCircle from "@/app/pomodoro/pomodoro_clock";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const { width } = Dimensions.get('window');
 const CIRCLE_SIZE = width * 0.8;
 
-export default function PomodoroTimer() {
+const PomodoroTimer = () => {
+
+    const { isDarkMode, toggleTheme, colors } = useTheme();
     const insets = useSafeAreaInsets();
-    const { colors, isDarkMode } = useTheme();
     const [isWorking, setIsWorking] = useState(true);
     const [isActive, setIsActive] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
@@ -63,7 +62,7 @@ export default function PomodoroTimer() {
     useEffect(() => {
         const loadSound = async () => {
             try {
-                const { sound } = await Audio.Sound.createAsync(
+                const {sound} = await Audio.Sound.createAsync(
                     require('../../assets/sounds/bell.mp3')
                 );
                 soundRef.current = sound;
@@ -221,14 +220,44 @@ export default function PomodoroTimer() {
     const formatTime = (seconds: any) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
+        return mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+    }
 
     const getSessionLabel = () => {
         if (isWorking) return "Focus Session";
 
         const isLongBreak = completedSessions > 0 && completedSessions % longBreakInterval === 0;
         return isLongBreak ? "Long Break" : "Short Break";
+    };
+
+    // Handler for settings updates
+    const handleUpdateSettings = (key: string, value: number | boolean) => {
+        switch (key) {
+            case 'workDuration':
+                setWorkDuration(value as number);
+                break;
+            case 'breakDuration':
+                setBreakDuration(value as number);
+                break;
+            case 'longBreakDuration':
+                setLongBreakDuration(value as number);
+                break;
+            case 'longBreakInterval':
+                setLongBreakInterval(value as number);
+                break;
+            case 'soundEnabled':
+                setSoundEnabled(value as boolean);
+                break;
+            case 'vibrationEnabled':
+                setVibrationEnabled(value as boolean);
+                break;
+            case 'autoStartBreaks':
+                setAutoStartBreaks(value as boolean);
+                break;
+            case 'autoStartPomodoros':
+                setAutoStartPomodoros(value as boolean);
+                break;
+        }
     };
 
     // Generate dynamic styles based on theme and state
@@ -263,33 +292,11 @@ export default function PomodoroTimer() {
         secondaryButtonText: {
             color: isDarkMode ? '#dee2e6' : '#495057',
         },
-        settingsTitle: {
-            color: isDarkMode ? '#f8f9fa' : '#212529',
-        },
-        settingsModal: {
-            backgroundColor: isDarkMode ? '#212529' : '#ffffff',
-        },
-        labelText: {
-            color: isDarkMode ? '#dee2e6' : '#495057',
-        },
-        valueText: {
-            color: isDarkMode ? '#f8f9fa' : '#212529',
-        },
-        sliderThumb: {
-            color: isWorking
-                ? isDarkMode ? '#fa5252' : '#e03131'
-                : isDarkMode ? '#339af0' : '#1c7ed6'
-        },
-        sliderTrack: {
-            backgroundColor: isDarkMode ? '#343a40' : '#e9ecef',
-        },
         statsCount: {
             color: isDarkMode ? '#f8f9fa' : '#212529',
         },
-        progressRing: {
-            tintColor: isWorking
-                ? isDarkMode ? '#ff6b6b' : '#fa5252'
-                : isDarkMode ? '#4dabf7' : '#339af0',
+        labelText: {
+            color: isDarkMode ? '#dee2e6' : '#495057',
         },
     };
 
@@ -298,188 +305,75 @@ export default function PomodoroTimer() {
         outputRange: ['0deg', '360deg'],
     });
 
-    // Settings modal
-    const renderSettingsModal = () => (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={showSettings}
-            onRequestClose={() => setShowSettings(false)}
-        >
-            <View style={styles.modalContainer}>
-                <View style={[styles.modalContent, dynamicStyles.settingsModal]}>
-                    <View style={styles.modalHeader}>
-                        <Text style={[styles.modalTitle, dynamicStyles.settingsTitle]}>Settings</Text>
-                        <TouchableOpacity onPress={() => setShowSettings(false)}>
-                            <Feather name="x" size={24} color={isDarkMode ? '#dee2e6' : '#495057'} />
-                        </TouchableOpacity>
-                    </View>
-
-                    <ScrollView style={styles.settingsScroll}>
-                        <View style={styles.settingSection}>
-                            <Text style={[styles.settingSectionTitle, dynamicStyles.settingsTitle]}>Time (Minutes)</Text>
-
-                            <View style={styles.settingRow}>
-                                <Text style={[styles.settingLabel, dynamicStyles.labelText]}>Work</Text>
-                                <Slider
-                                    style={styles.slider}
-                                    minimumValue={1}
-                                    maximumValue={60}
-                                    step={1}
-                                    value={workDuration}
-                                    onValueChange={setWorkDuration}
-                                    minimumTrackTintColor={isDarkMode ? '#fa5252' : '#e03131'}
-                                    maximumTrackTintColor={dynamicStyles.sliderTrack.backgroundColor}
-                                    thumbTintColor={isDarkMode ? '#fa5252' : '#e03131'}
-                                />
-                                <Text style={[styles.settingValue, dynamicStyles.valueText]}>{workDuration}</Text>
-                            </View>
-
-                            <View style={styles.settingRow}>
-                                <Text style={[styles.settingLabel, dynamicStyles.labelText]}>Short Break</Text>
-                                <Slider
-                                    style={styles.slider}
-                                    minimumValue={1}
-                                    maximumValue={30}
-                                    step={1}
-                                    value={breakDuration}
-                                    onValueChange={setBreakDuration}
-                                    minimumTrackTintColor={isDarkMode ? '#339af0' : '#1c7ed6'}
-                                    maximumTrackTintColor={dynamicStyles.sliderTrack.backgroundColor}
-                                    thumbTintColor={isDarkMode ? '#339af0' : '#1c7ed6'}
-                                />
-                                <Text style={[styles.settingValue, dynamicStyles.valueText]}>{breakDuration}</Text>
-                            </View>
-
-                            <View style={styles.settingRow}>
-                                <Text style={[styles.settingLabel, dynamicStyles.labelText]}>Long Break</Text>
-                                <Slider
-                                    style={styles.slider}
-                                    minimumValue={1}
-                                    maximumValue={30}
-                                    step={1}
-                                    value={longBreakDuration}
-                                    onValueChange={setLongBreakDuration}
-                                    minimumTrackTintColor={isDarkMode ? '#339af0' : '#1c7ed6'}
-                                    maximumTrackTintColor={dynamicStyles.sliderTrack.backgroundColor}
-                                    thumbTintColor={isDarkMode ? '#339af0' : '#1c7ed6'}
-                                />
-                                <Text style={[styles.settingValue, dynamicStyles.valueText]}>{longBreakDuration}</Text>
-                            </View>
-
-                            <View style={styles.settingRow}>
-                                <Text style={[styles.settingLabel, dynamicStyles.labelText]}>Long Break Interval</Text>
-                                <Slider
-                                    style={styles.slider}
-                                    minimumValue={1}
-                                    maximumValue={10}
-                                    step={1}
-                                    value={longBreakInterval}
-                                    onValueChange={setLongBreakInterval}
-                                    minimumTrackTintColor={isDarkMode ? '#fa5252' : '#e03131'}
-                                    maximumTrackTintColor={dynamicStyles.sliderTrack.backgroundColor}
-                                    thumbTintColor={isDarkMode ? '#fa5252' : '#e03131'}
-                                />
-                                <Text style={[styles.settingValue, dynamicStyles.valueText]}>{longBreakInterval}</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.settingSection}>
-                            <Text style={[styles.settingSectionTitle, dynamicStyles.settingsTitle]}>Preferences</Text>
-
-                            <View style={styles.switchRow}>
-                                <Text style={[styles.switchLabel, dynamicStyles.labelText]}>Sound</Text>
-                                <Switch
-                                    value={soundEnabled}
-                                    onValueChange={setSoundEnabled}
-                                    trackColor={{ false: '#767577', true: isDarkMode ? '#4dabf7' : '#1c7ed6' }}
-                                    thumbColor={soundEnabled ? '#f4f3f4' : '#f4f3f4'}
-                                />
-                            </View>
-
-                            <View style={styles.switchRow}>
-                                <Text style={[styles.switchLabel, dynamicStyles.labelText]}>Vibration</Text>
-                                <Switch
-                                    value={vibrationEnabled}
-                                    onValueChange={setVibrationEnabled}
-                                    trackColor={{ false: '#767577', true: isDarkMode ? '#4dabf7' : '#1c7ed6' }}
-                                    thumbColor={vibrationEnabled ? '#f4f3f4' : '#f4f3f4'}
-                                />
-                            </View>
-
-                            <View style={styles.switchRow}>
-                                <Text style={[styles.switchLabel, dynamicStyles.labelText]}>Auto-start Breaks</Text>
-                                <Switch
-                                    value={autoStartBreaks}
-                                    onValueChange={setAutoStartBreaks}
-                                    trackColor={{ false: '#767577', true: isDarkMode ? '#4dabf7' : '#1c7ed6' }}
-                                    thumbColor={autoStartBreaks ? '#f4f3f4' : '#f4f3f4'}
-                                />
-                            </View>
-
-                            <View style={styles.switchRow}>
-                                <Text style={[styles.switchLabel, dynamicStyles.labelText]}>Auto-start Pomodoros</Text>
-                                <Switch
-                                    value={autoStartPomodoros}
-                                    onValueChange={setAutoStartPomodoros}
-                                    trackColor={{ false: '#767577', true: isDarkMode ? '#4dabf7' : '#1c7ed6' }}
-                                    thumbColor={autoStartPomodoros ? '#f4f3f4' : '#f4f3f4'}
-                                />
-                            </View>
-                        </View>
-                    </ScrollView>
-                </View>
-            </View>
-        </Modal>
-    );
+    // Current settings object to pass to the settings component
+    const pomodoroSettings = {
+        workDuration,
+        breakDuration,
+        longBreakDuration,
+        longBreakInterval,
+        soundEnabled,
+        vibrationEnabled,
+        autoStartBreaks,
+        autoStartPomodoros
+    };
 
     return (
-        <SafeAreaView style={[styles.container, dynamicStyles.container, { paddingTop: insets.top }]}>
-            <View style={styles.header}>
-                <Text style={[styles.sessionText, dynamicStyles.sessionText]}>
-                    {getSessionLabel()}
-                </Text>
-                <TouchableOpacity onPress={() => setShowSettings(true)}>
-                    <Feather name="settings" size={24} color={isDarkMode ? '#dee2e6' : '#495057'} />
-                </TouchableOpacity>
-            </View>
+        <SafeAreaView style={[styles.container, dynamicStyles.container, {paddingTop: insets.top}]}>
 
+			<PomodoroHeader
+                getSessionLabel={getSessionLabel}
+                setShowSettings={setShowSettings}
+            ></PomodoroHeader>
             <View style={styles.timerContainer}>
-                <View style={[styles.timerCircle, dynamicStyles.timerCircle]}>
-                    <Animated.View style={[styles.progressRing, {
-                        transform: [{ scale: animatedValue }],
-                        opacity: progressAnimation
-                    }]}>
-                        <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE} style={styles.svgContainer}>
-                            <AnimatedCircle
-                                cx={CIRCLE_SIZE / 2}
-                                cy={CIRCLE_SIZE / 2}
-                                r={(CIRCLE_SIZE / 2) - 10} // Slightly smaller than container
-                                fill="none"
-                                stroke={isWorking ?
-                                    (isDarkMode ? '#ff6b6b' : '#fa5252') :
-                                    (isDarkMode ? '#4dabf7' : '#339af0')}
-                                strokeWidth={10}
-                                strokeLinecap="round"
-                                strokeDasharray={2 * Math.PI * ((CIRCLE_SIZE / 2) - 10)}
-                                strokeDashoffset={progressAnimation.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [2 * Math.PI * ((CIRCLE_SIZE / 2) - 10), 0]
-                                })}
-                                transform={[{ rotate: '-90deg' }]} // Start from top
-                            />
-                        </Svg>
-                    </Animated.View>
+                {/*<View style={[styles.timerCircle, dynamicStyles.timerCircle]}>*/}
+                {/*    <Animated.View style={[styles.progressRing, {*/}
+                {/*        transform: [{scale: animatedValue}],*/}
+                {/*        opacity: progressAnimation*/}
+                {/*    }]}>*/}
+                {/*        <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE} style={styles.svgContainer}>*/}
+                {/*            <AnimatedCircle*/}
+                {/*                cx={CIRCLE_SIZE / 2}*/}
+                {/*                cy={CIRCLE_SIZE / 2}*/}
+                {/*                r={(CIRCLE_SIZE / 2) - 10} // Slightly smaller than container*/}
+                {/*                fill="none"*/}
+                {/*                stroke={isWorking ?*/}
+                {/*                    (isDarkMode ? '#ff6b6b' : '#fa5252') :*/}
+                {/*                    (isDarkMode ? '#4dabf7' : '#339af0')}*/}
+                {/*                strokeWidth={10}*/}
+                {/*                strokeLinecap="round"*/}
+                {/*                strokeDasharray={2 * Math.PI * ((CIRCLE_SIZE / 2) - 10)}*/}
+                {/*                strokeDashoffset={progressAnimation.interpolate({*/}
+                {/*                    inputRange: [0, 1],*/}
+                {/*                    outputRange: [2 * Math.PI * ((CIRCLE_SIZE / 2) - 10), 0]*/}
+                {/*                })}*/}
+                {/*                transform={[{rotate: '-90deg'}]} // Start from top*/}
+                {/*            />*/}
+                {/*        </Svg>*/}
+                {/*    </Animated.View>*/}
 
-                    <Text style={[styles.timeText, dynamicStyles.timeText]}>
-                        {formatTime(time)}
-                    </Text>
+                {/*    <Text style={[styles.timeText, dynamicStyles.timeText]}>*/}
+                {/*        {formatTime(time)}*/}
+                {/*    </Text>*/}
 
-                    <Text style={[styles.sessionStatus, dynamicStyles.sessionText]}>
-                        {isActive
-                            ? (isPaused ? 'Paused' : 'Running')
-                            : (isWorking ? 'Ready to Focus' : 'Time for a Break')}
-                    </Text>
+                {/*    <Text style={[styles.sessionStatus, dynamicStyles.sessionText]}>*/}
+                {/*        {isActive*/}
+                {/*            ? (isPaused ? 'Paused' : 'Running')*/}
+                {/*            : (isWorking ? 'Ready to Focus' : 'Time for a Break')}*/}
+                {/*    </Text>*/}
+                {/*</View>*/}
+
+
+                <View style={styles.timerContainer}>
+                    <View style={styles.timerContainer}>
+                        <TimerCircle
+                            time={formatTime(time)}
+                            progressAnimation={progressAnimation}
+                            isWorking={isWorking}
+                            isActive={isActive}
+                            isPaused={isPaused}
+                            animatedValue={animatedValue}
+                        />
+                    </View>
                 </View>
             </View>
 
@@ -527,7 +421,18 @@ export default function PomodoroTimer() {
                 </View>
             </View>
 
-            {renderSettingsModal()}
+            {/* Use the extracted settings component */}
+            <PomodoroSettings
+                visible={showSettings}
+                onClose={() => setShowSettings(false)}
+                isDarkMode={isDarkMode}
+                settings={pomodoroSettings}
+                onUpdateSettings={handleUpdateSettings}
+                onResetSessions={() => {
+                    setCompletedSessions(0);
+                    setShowSettings(false);
+                }}
+            />
         </SafeAreaView>
     );
 }
@@ -573,10 +478,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 10,
         elevation: 5,
-    },
-    progressRingImage: {
-        width: '100%',
-        height: '100%',
     },
     timeText: {
         fontSize: 72,
@@ -630,64 +531,14 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '600',
     },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-    },
-    modalContent: {
-        height: '70%',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 20,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    modalTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-    },
-    settingsScroll: {
-        flex: 1,
-    },
-    settingSection: {
-        marginBottom: 25,
-    },
-    settingSectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 15,
-    },
-    settingRow: {
+    headerControls: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 15,
     },
-    settingLabel: {
-        width: 120,
-        fontSize: 16,
-    },
-    slider: {
-        flex: 1,
-        marginHorizontal: 10,
-    },
-    settingValue: {
-        width: 30,
-        fontSize: 16,
-        fontWeight: '600',
-        textAlign: 'right',
-    },
-    switchRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    switchLabel: {
-        fontSize: 16,
+    headerButton: {
+        padding: 8,
+        marginLeft: 16,
     },
 });
+
+export default PomodoroTimer;
