@@ -17,6 +17,7 @@ import Svg, { Circle } from 'react-native-svg';
 import PomodoroSettings from "@/app/pomodoro/pomodoro_settings";
 import PomodoroHeader from "@/app/pomodoro/pomodoro_header";
 import TimerCircle from "@/app/pomodoro/pomodoro_clock";
+import PomodoroControls from "@/app/pomodoro/pomodoro controls/pomodoro_controls";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const { width } = Dimensions.get('window');
@@ -324,89 +325,40 @@ const PomodoroTimer = () => {
                 getSessionLabel={getSessionLabel}
                 setShowSettings={setShowSettings}
             ></PomodoroHeader>
+
             <View style={styles.timerContainer}>
-                {/*<View style={[styles.timerCircle, dynamicStyles.timerCircle]}>*/}
-                {/*    <Animated.View style={[styles.progressRing, {*/}
-                {/*        transform: [{scale: animatedValue}],*/}
-                {/*        opacity: progressAnimation*/}
-                {/*    }]}>*/}
-                {/*        <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE} style={styles.svgContainer}>*/}
-                {/*            <AnimatedCircle*/}
-                {/*                cx={CIRCLE_SIZE / 2}*/}
-                {/*                cy={CIRCLE_SIZE / 2}*/}
-                {/*                r={(CIRCLE_SIZE / 2) - 10} // Slightly smaller than container*/}
-                {/*                fill="none"*/}
-                {/*                stroke={isWorking ?*/}
-                {/*                    (isDarkMode ? '#ff6b6b' : '#fa5252') :*/}
-                {/*                    (isDarkMode ? '#4dabf7' : '#339af0')}*/}
-                {/*                strokeWidth={10}*/}
-                {/*                strokeLinecap="round"*/}
-                {/*                strokeDasharray={2 * Math.PI * ((CIRCLE_SIZE / 2) - 10)}*/}
-                {/*                strokeDashoffset={progressAnimation.interpolate({*/}
-                {/*                    inputRange: [0, 1],*/}
-                {/*                    outputRange: [2 * Math.PI * ((CIRCLE_SIZE / 2) - 10), 0]*/}
-                {/*                })}*/}
-                {/*                transform={[{rotate: '-90deg'}]} // Start from top*/}
-                {/*            />*/}
-                {/*        </Svg>*/}
-                {/*    </Animated.View>*/}
-
-                {/*    <Text style={[styles.timeText, dynamicStyles.timeText]}>*/}
-                {/*        {formatTime(time)}*/}
-                {/*    </Text>*/}
-
-                {/*    <Text style={[styles.sessionStatus, dynamicStyles.sessionText]}>*/}
-                {/*        {isActive*/}
-                {/*            ? (isPaused ? 'Paused' : 'Running')*/}
-                {/*            : (isWorking ? 'Ready to Focus' : 'Time for a Break')}*/}
-                {/*    </Text>*/}
-                {/*</View>*/}
-
-
                 <View style={styles.timerContainer}>
-                    <View style={styles.timerContainer}>
-                        <TimerCircle
-                            time={formatTime(time)}
-                            progressAnimation={progressAnimation}
-                            isWorking={isWorking}
-                            isActive={isActive}
-                            isPaused={isPaused}
-                            animatedValue={animatedValue}
-                        />
-                    </View>
+                    <TimerCircle
+                        time={formatTime(time)}
+                        progressAnimation={progressAnimation}
+                        isWorking={isWorking}
+                        isActive={isActive}
+                        isPaused={isPaused}
+                        animatedValue={animatedValue}
+                    />
                 </View>
             </View>
 
-            <View style={styles.controls}>
-                <TouchableOpacity
-                    style={[styles.controlButton, dynamicStyles.controlButton]}
-                    onPress={toggleTimer}
-                >
-                    <Feather
-                        name={isActive ? (isPaused ? 'play' : 'pause') : 'play'}
-                        size={24}
-                        color="white"
-                    />
-                </TouchableOpacity>
+            <PomodoroControls
+                isActive={isActive}
+                isPaused={isPaused}
+                isWorking={isWorking}
+                progress={10}
+                toggleTimer={toggleTimer}
+                skipTimer={skipTimer}
+                resetTimer={resetTimer}
+                adjustTime={(seconds) => {
+                    // Ensure time doesn't go negative
+                    setTime(prev => Math.max(0, prev + seconds));
 
-                <TouchableOpacity
-                    style={[styles.secondaryButton, dynamicStyles.secondaryButton]}
-                    onPress={skipTimer}
-                >
-                    <Text style={[styles.secondaryButtonText, dynamicStyles.secondaryButtonText]}>
-                        Skip
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.secondaryButton, dynamicStyles.secondaryButton]}
-                    onPress={() => resetTimer(isWorking)}
-                >
-                    <Text style={[styles.secondaryButtonText, dynamicStyles.secondaryButtonText]}>
-                        Reset
-                    </Text>
-                </TouchableOpacity>
-            </View>
+                    // Provide haptic feedback
+                    if (vibrationEnabled) {
+                        Vibration.vibrate(50);
+                    }
+                }}
+                isDarkMode={isDarkMode}
+                isFirstTime={false} // You might want to track this in state
+            />
 
             <View style={styles.stats}>
                 <View style={styles.statItem}>
